@@ -35,6 +35,82 @@ enum DictEntryValue {
 
 pub struct MacPlatformApi {}
 
+impl MacPlatformApi {
+
+    fn get_frontmost_application_window(&self) -> Result<ActiveWindow, ()> {
+        const OPTIONS: CGWindowListOption =
+            kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
+        let window_list_info = unsafe { CGWindowListCopyWindowInfo(OPTIONS, kCGNullWindowID) };
+
+        let windows_count: isize = unsafe { CFArrayGetCount(window_list_info) };
+
+        let mut win_pos = WindowPosition::new(0., 0., 0., 0.);
+        let mut win_title = String::from("");
+        let mut app_name = String::from("");
+
+        for i in 0..windows_count {
+            let dic_ref = unsafe { CFArrayGetValueAtIndex(window_list_info, i) as CFDictionaryRef };
+
+            if dic_ref.is_null() {
+                continue;
+            }
+
+            let window_pid = get_from_dict(dic_ref, "kCGWindowOwnerPID");
+
+            if let DictEntryValue::_Number(win_pid) = window_pid {
+
+                if let DictEntryValue::_Rect(window_bounds) =
+                    get_from_dict(dic_ref, "kCGWindowBounds")
+                {
+                    if window_bounds.width < 50. || window_bounds.height < 50. {
+                        continue;
+                    }
+
+                    win_pos = window_bounds;
+                }
+
+                if let DictEntryValue::_String(window_title) =
+                    get_from_dict(dic_ref, "kCGWindowName")
+                {
+                    win_title = window_title;
+                }
+
+                if let DictEntryValue::_String(owner_name) =
+                    get_from_dict(dic_ref, "kCGWindowOwnerName")
+                {
+                    app_name = owner_name;
+                }
+
+                let process_path: PathBuf = unsafe {
+                    // let bundle_url = active_app.bundleURL().path();
+                    // PathBuf::from(nsstring_to_rust_string(bundle_url.0))
+                    PathBuf::from("")
+                };
+
+                if let DictEntryValue::_Number(window_id) =
+                    get_from_dict(dic_ref, "kCGWindowNumber")
+                {
+                    let active_window = ActiveWindow {
+                        window_id: window_id.to_string(),
+                        process_id: win_pid as u64,
+                        app_name,
+                        position: win_pos,
+                        title: win_title,
+                        process_path,
+                    };
+
+                    return Ok(active_window);
+                }
+                return Err(());
+            }
+        }
+
+        unsafe { CFRelease(window_list_info as CFTypeRef) }
+
+        Err(())
+    }
+}
+
 impl PlatformApi for MacPlatformApi {
     fn get_position(&self) -> Result<WindowPosition, ()> {
         if let Ok(active_window) = self.get_active_window() {
@@ -45,6 +121,8 @@ impl PlatformApi for MacPlatformApi {
     }
 
     fn get_active_window(&self) -> Result<ActiveWindow, ()> {
+        self.get_frontmost_application_window()
+        /*
         const OPTIONS: CGWindowListOption =
             kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
         let window_list_info = unsafe { CGWindowListCopyWindowInfo(OPTIONS, kCGNullWindowID) };
@@ -123,6 +201,7 @@ impl PlatformApi for MacPlatformApi {
         unsafe { CFRelease(window_list_info as CFTypeRef) }
 
         Err(())
+        */
     }
 }
 
