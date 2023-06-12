@@ -3,7 +3,7 @@ use super::window_position::FromCgRect;
 use crate::common::{
     active_window::ActiveWindow, platform_api::PlatformApi, window_position::WindowPosition,
 };
-use appkit_nsworkspace_bindings::{INSRunningApplication, INSWorkspace, NSWorkspace, INSURL};
+use appkit_nsworkspace_bindings::{INSRunningApplication, INSWorkspace, NSWorkspace, NSProgress, INSURL, NSRunningApplication};
 use core_foundation::{
     base::{CFGetTypeID, ToVoid},
     boolean::CFBooleanGetTypeID,
@@ -18,6 +18,7 @@ use core_foundation::{
 use core_graphics::display::*;
 use objc::runtime::Object;
 use std::{ffi::c_void, path::PathBuf};
+use sysinfo::{PidExt, ProcessExt, SystemExt};
 
 #[allow(non_upper_case_globals)]
 pub const kCFNumberSInt32Type: CFNumberType = 3;
@@ -84,7 +85,7 @@ impl MacPlatformApi {
                 let process_path: PathBuf = unsafe {
                     // let bundle_url = active_app.bundleURL().path();
                     // PathBuf::from(nsstring_to_rust_string(bundle_url.0))
-                    PathBuf::from("")
+                    PathBuf::from(self.get_process_path(win_pid as u64))
                 };
 
                 if let DictEntryValue::_Number(window_id) =
@@ -108,6 +109,19 @@ impl MacPlatformApi {
         unsafe { CFRelease(window_list_info as CFTypeRef) }
 
         Err(())
+    }
+
+    fn get_process_path(&self, pid: u64) -> String {
+        let pid = sysinfo::Pid::from_u32(pid as u32);
+        let mut system = sysinfo::System::new();
+        system.refresh_process(pid);
+
+        return match system.process(pid) {
+            None => "".to_string(),
+            Some(process) => {
+                process.cmd()[0].to_string()
+            }
+        }
     }
 }
 
