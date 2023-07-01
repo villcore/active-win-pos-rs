@@ -85,6 +85,11 @@ impl MacPlatformApi {
                 let process_path: PathBuf = unsafe {
                     // let bundle_url = active_app.bundleURL().path();
                     // PathBuf::from(nsstring_to_rust_string(bundle_url.0))
+
+                    let process_path = self.get_process_path(win_pid as u64);
+                    if process_path.contains("Dock.app") {
+                        continue
+                    }
                     PathBuf::from(self.get_process_path(win_pid as u64))
                 };
 
@@ -283,6 +288,20 @@ pub fn nsstring_to_rust_string(nsstring: *mut Object) -> String {
                 .into_owned()
         } else {
             "".into()
+        }
+    }
+}
+
+pub mod test{
+    use crate::{ActiveWindow, get_active_window};
+
+    #[test]
+    pub fn testGetAllWindows() {
+        match get_active_window() {
+            Ok(windiows) => {
+                println!("windows = {:?}", windiows);
+            }
+            Err(_) => {}
         }
     }
 }
