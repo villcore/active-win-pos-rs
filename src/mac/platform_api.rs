@@ -87,7 +87,7 @@ impl MacPlatformApi {
                     // PathBuf::from(nsstring_to_rust_string(bundle_url.0))
 
                     let process_path = self.get_process_path(win_pid as u64);
-                    if process_path.contains("Dock.app") {
+                    if process_path.contains("System/Library/CoreServices") {
                         continue
                     }
                     PathBuf::from(self.get_process_path(win_pid as u64))
@@ -124,7 +124,11 @@ impl MacPlatformApi {
         return match system.process(pid) {
             None => "".to_string(),
             Some(process) => {
-                process.cmd()[0].to_string()
+                return if process.cmd().len() > 0 {
+                    process.cmd()[0].to_string()
+                } else {
+                    "".to_string()
+                };
             }
         }
     }
@@ -293,7 +297,7 @@ pub fn nsstring_to_rust_string(nsstring: *mut Object) -> String {
 }
 
 pub mod test{
-    use crate::{ActiveWindow, get_active_window};
+    use crate::get_active_window;
 
     #[test]
     pub fn testGetAllWindows() {
