@@ -45,6 +45,8 @@ impl PlatformApi for MacPlatformApi {
     }
 
     fn get_active_window(&self) -> Result<ActiveWindow, ()> {
+        unsafe { run_loop() };
+
         const OPTIONS: CGWindowListOption =
             kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
         let window_list_info = unsafe { CGWindowListCopyWindowInfo(OPTIONS, kCGNullWindowID) };
@@ -179,6 +181,16 @@ fn get_from_dict(dict: CFDictionaryRef, key: &str) -> DictEntryValue {
     }
 
     DictEntryValue::_Unknown
+}
+
+unsafe fn run_loop() {
+    let run_loop: *mut Object = msg_send![class!(NSRunLoop), mainRunLoop];
+    let date: *mut Object = msg_send![class!(NSDate), dateWithTimeIntervalSinceNow:0.1];
+    let _: () = msg_send![run_loop, runUntilDate: date];
+}
+
+pub unsafe fn release(object: *mut Object) {
+    let _: () = msg_send![object, release];
 }
 
 pub fn nsstring_to_rust_string(nsstring: *mut Object) -> String {
